@@ -1,0 +1,26 @@
+task updateAppVersion {
+    doLast {
+        def buildFilePath = file('./build.gradle') // Reference to build.gradle file
+        def buildFileContent = buildFilePath.text // Read the content of build.gradle
+
+        def newVersionCode = project.hasProperty('versionCode') ? project.versionCode : null
+        def newVersionName = project.hasProperty('versionName') ? project.versionName : null
+
+        def regexVersionCode = ~/versionCode \d+/ // Regex pattern for versionCode
+        def regexVersionName = ~/versionName "\S+"/ // Regex pattern for versionName
+
+        // Only update if new values are provided
+        if (newVersionCode != null) {
+            buildFileContent = buildFileContent.replaceAll(regexVersionCode, "versionCode $newVersionCode")
+            println "Updated versionCode to: $newVersionCode"
+        }
+
+        if (newVersionName != null) {
+            buildFileContent = buildFileContent.replaceAll(regexVersionName, "versionName \"$newVersionName\"")
+            println "Updated versionName to: $newVersionName"
+        }
+
+        // Write the updated content back to build.gradle
+        buildFilePath.write(buildFileContent)
+    }
+}

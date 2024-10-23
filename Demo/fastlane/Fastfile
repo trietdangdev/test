@@ -1,0 +1,209 @@
+
+before_all do
+  # IOS VARIABLE
+  ENV["TEAM_ID"] = "125636177"
+  ENV["RCT_NO_LAUNCH_PACKAGER"] = "1"
+  ENV["XCODEWORKSPACE_PATH"] = "./ios/liberty_cm.xcworkspace"
+  ENV["XCODEPROJ_PATH"] = "ios/liberty_cm.xcodeproj"
+  ENV["IOS_OUTPUT_DIRECTORY"] = "./build/ios/ipa/"
+  ENV["IOS_IPA_PATH"] = "./build/ios/ipa/liberty_cm.ipa"
+  # ANDROID VARIABLE
+  ENV["APK_DEV_PATH"] = './android/app/build/outputs/apk/development/release/app-development-release.apk'
+  ENV["APK_PRO_PATH"] = './android/app/build/outputs/apk/production/release/app-production-release.apk'
+  ENV["AAB_PRO_PATH"] = './android/app/build/outputs/bundle/productionRelease/app-production-release.aab'
+  ENV["APK_STG_PATH"] = './android/app/build/outputs/apk/staging/release/app-staging-release.apk'
+  ENV["FIREBASE_GROUP_TESTER"] = "liberty-belink-hrm"
+
+end
+
+"################### IOS ###################"
+platform :ios do
+
+  def build_ipa(scheme, configuration)
+    gym(
+      export_method: 'app-store',
+      scheme: scheme,
+      configuration: configuration,
+      workspace: ENV["XCODEWORKSPACE_PATH"],
+      # output_directory: ENV["IOS_OUTPUT_DIRECTORY"],
+      clean: true,
+      silent: true,
+      xcargs: "-allowProvisioningUpdates"
+    )
+  end
+
+  def deploy_ipa(app_identifier)
+    change_log = changelog_from_git_commits(
+      commits_count: 1,
+      pretty: "%cd - %s",
+      match_lightweight_tag: false,
+    )
+    upload_to_testflight(
+      changelog: change_log,
+      app_identifier: app_identifier,
+      team_id: ENV["TEAM_ID"],
+      # ipa: ENV["IOS_IPA_PATH"],
+      distribute_external: true,
+      groups: ["liberty-external"],
+      reject_build_waiting_for_review: false,
+      notify_external_testers: true,
+      skip_waiting_for_build_processing: false,
+      api_key_path: "scripts/data/apikey/AuthKey.json",
+    )
+  end
+
+  # =============== CHANGE APP VERSION
+  desc "Change App Version"
+  lane :change_app_version do
+    increment_version_number(
+      xcodeproj: ENV["XCODEPROJ_PATH"],
+      version_number: ENV["APP_BUILD_VERSION"],
+    )
+    increment_build_number(
+      xcodeproj: ENV["XCODEPROJ_PATH"],
+      build_number: ENV["APP_BUILD_NUMBER"],
+    )
+  end
+
+  # =============== BUILD PHASE
+
+  desc "Build IOS IPA Dev"
+  lane :build_ipa_dev do
+    build_ipa("BelinkHRMDev", "ReleaseDev")
+  end
+
+  desc "Build IOS IPA Prod"
+  lane :build_ipa_prod do
+    build_ipa("BelinkHRMPro", "ReleasePro")
+  end
+
+  desc "Build IOS IPA Stag"
+  lane :build_ipa_stg do
+    build_ipa("BelinkHRMStg", "ReleaseStg")
+  end
+
+
+
+  # =============== DEPLOY PHASE
+  desc "Deploy IOS IPA Dev"
+  lane :deploy_ipa_dev do
+    app_identifier = "com.libertybelink.hrm.dev"
+    deploy_ipa(app_identifier)
+  end
+
+  desc "Deploy IOS IPA Production"
+  lane :deploy_ipa_prod do
+    app_identifier = "com.libertybelink.hrm"
+    deploy_ipa(app_identifier)
+  end
+
+  desc "Deploy IOS IPA Staging"
+  lane :deploy_ipa_stg do
+    app_identifier = "com.libertybelink.hrm.stg"
+    deploy_ipa(app_identifier)
+  end
+
+end
+
+"################### ANDROID ###################"
+platform :android do
+
+  def build_android(task, build_type, flavor)
+    gradle(
+      task: task,
+      flavor: flavor,
+      build_type: build_type,
+      project_dir: './android'
+    )
+  end
+
+  def distribute_android(artifact_type, build_path)
+    change_log = changelog_from_git_commits(
+      commits_count: 1,
+      pretty: "%cd - %s",
+      match_lightweight_tag: false,
+    )
+    firebase_app_distribution(
+      app: ENV["ANDROID_FIREBASE_ID"],
+      apk_path: build_path,
+      groups: ENV["FIREBASE_GROUP_TESTER"],
+      release_notes: change_log,
+      firebase_cli_token: ENV["FIREBASE_CLI_TOKEN"],
+      android_artifact_type: artifact_type
+    )
+  end
+
+  # =============== CONFIG APP VERSION
+  desc "Set App Version Code"
+  lane :change_app_version do
+    gradle(
+      task: 'updateAppVersion',
+      project_dir: './android',
+      properties: {
+        "versionName" => ENV["APP_BUILD_VERSION"],
+        "versionCode" => ENV["APP_BUILD_NUMBER"]
+      }
+    )
+  end
+
+  # =============== BUILD PHASE
+   desc "Build Android APK Development"
+  lane :build_apk_dev do
+    build_android("assemble", "Release", "Development")
+  end
+
+  desc "Build Android APK Staging"
+  lane :build_apk_stg do
+    build_android("assemble", "Release", "Staging")
+  end
+
+  desc "Build Android APK Production"
+  lane :build_apk_prod do
+    build_android("assemble", "Release", "Production")
+  end
+
+  desc "Build Android AAB Production"
+  lane :build_aab_prod do
+    build_android("bundle", "Release", "Production")
+  end
+
+  # =============== DEPLOY PHASE
+  desc "Deploy Android APK Development"
+  lane :deploy_apk_dev do
+    build_path = ENV["APK_DEV_PATH"]
+    distribute_android('APK', build_path)
+  end
+
+  desc "Deploy Android APK Staging"
+  lane :deploy_apk_stg do
+    build_path = ENV["APK_STG_PATH"]
+    distribute_android('APK', build_path)
+  end
+
+
+  desc "Deploy Android APK Production"
+  lane :deploy_apk_prod do
+    build_path = ENV["APK_PRO_PATH"]
+    distribute_android('APK', build_path)
+  end
+
+
+  desc "Deploy Android AAB Production to playstore beta"
+  lane :deploy_aab_prod do
+    build_path = ENV["AAB_PRO_PATH"]
+    change_log = changelog_from_git_commits(
+      commits_count: 1,
+      pretty: "%cd - %s",
+      match_lightweight_tag: false,
+    )
+
+    upload_to_play_store(
+      json_key: "scripts/data/apikey/PlayStoreKey.json",
+      aab: build_path,
+      timeout: 600,
+      track: "beta",
+      package_name: "com.libertybelink.hrm"
+    )
+  end
+
+end

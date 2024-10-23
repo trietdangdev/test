@@ -1,0 +1,18 @@
+//
+//  Config.Dev.xcconfig
+//  liberty_cm
+//
+//  Created by Tam Vo on 25/04/2024.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+ENV_NAME = development
+PRODUCT_BUNDLE_DISPLAY_NAME = [D]Belink HRM
+PRODUCT_BUNDLE_IDENTIFIER = com.libertybelink.hrm.dev
+PRODUCT_NAME = BelinkHRM
+
+PRODUCT_BUNDLE_URL_NAME = com.libertybelink.hrm.dev
+
+PROVISIONING_PROFILE_SPECIFIER = Store Liberty Belink HRM Dev

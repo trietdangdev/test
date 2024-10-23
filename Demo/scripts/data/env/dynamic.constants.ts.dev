@@ -1,0 +1,16 @@
+const Config = {
+  ENV_CONFIG: 'release',
+  NODE_ENV: 'development',
+  API_URL: 'https://api-dev.belink.contact/api',
+  WEB_VIEW_COMMUNITY_DOMAIN: 'https://community-dev.belink.contact',
+  WEB_VIEW_NAME_CARD_DOMAIN: 'namecard-dev.belink.network',
+  DEEP_LINK: 'belink.network-dev',
+  IOS_APP_ID: '6477515401',
+  ANDROID_APP_ID: 'gl.com.belink',
+  COMET_CHAT_APP_ID: '254893f0c3bfe12e',
+  COMET_CHAT_REGION: 'in',
+  COMET_CHAT_AUTH_KEY: '925c7ba9681f0b96f8f53eb8d30746a8cacf5e97',
+  FIRESTORE_EVENT_KEY: 'belink_hrm_dev',
+}
+
+export default Config
